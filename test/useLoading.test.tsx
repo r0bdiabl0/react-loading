@@ -1,57 +1,66 @@
-import React, { ReactElement, ReactNode } from 'react';
-import { renderHook } from '@testing-library/react-hooks';
-import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom/extend-expect';
-
-import { useLoading, LoaderProvider } from '../src';
+import '@testing-library/jest-dom'; // Import jest-dom matchers
+import { fireEvent, render, screen } from '@testing-library/react';
+import React, { ReactElement, ReactNode, useState } from 'react';
+import { LoaderProvider, useLoading } from '../src';
 
 describe('useLoading', () => {
   test('renders element passed in', () => {
-    let loading = false;
-    const { result, rerender } = renderHook(() =>
-      useLoading({
+    const TestComponent = () => {
+      const [loading, setLoading] = useState(false);
+      const { containerProps, indicatorEl } = useLoading({
         loading,
         indicator: <p>loader</p>,
-      })
-    );
+      });
+      return (
+        <div>
+          <button onClick={() => setLoading(!loading)}>Toggle Loading</button>
+          <div {...containerProps}>{indicatorEl}</div>
+        </div>
+      );
+    };
 
-    expect(result.current.containerProps['aria-busy']).toBe(false);
-    expect(result.current.indicatorEl).toBeFalsy();
+    render(<TestComponent />);
 
-    loading = true;
-    rerender();
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveTextContent('Toggle Loading');
+    expect(screen.queryByText('loader')).not.toBeInTheDocument();
 
-    expect(result.current.containerProps['aria-busy']).toBe(true);
+    fireEvent.click(screen.getByRole('button'));
 
-    render(result.current.indicatorEl as ReactElement);
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveTextContent('Toggle Loading');
     expect(screen.getByText('loader')).toBeInTheDocument();
   });
 
   test('renders element from context if no element passed in', () => {
-    const wrapper = ({ children }: { children: ReactNode }) => (
+    const WrapperComponent = ({ children }: { children: ReactNode }) => (
       <LoaderProvider indicator={<span>context loader</span>}>
         {children}
       </LoaderProvider>
     );
-    let indicator: ReactElement | undefined;
 
-    const { result, rerender } = renderHook(
-      () =>
-        useLoading({
-          loading: true,
-          indicator,
-        }),
-      { wrapper }
+    const TestComponent = ({ indicator }: { indicator?: ReactElement }) => {
+      const { indicatorEl } = useLoading({
+        loading: true,
+        indicator,
+      });
+      return <>{indicatorEl}</>;
+    };
+
+    render(
+      <WrapperComponent>
+        <TestComponent />
+      </WrapperComponent>
     );
 
-    const { unmount } = render(result.current.indicatorEl as ReactElement);
     expect(screen.getByText('context loader')).toBeInTheDocument();
-    unmount();
 
-    indicator = <p>custom loader</p>;
-    rerender();
+    render(
+      <WrapperComponent>
+        <TestComponent indicator={<p>custom loader</p>} />
+      </WrapperComponent>
+    );
 
-    render(result.current.indicatorEl as ReactElement);
     expect(screen.getByText('custom loader')).toBeInTheDocument();
   });
 });
