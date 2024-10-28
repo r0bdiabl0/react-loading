@@ -29,7 +29,7 @@
     "postrelease": "gh-pages -d example/dist"
   },
   "peerDependencies": {
-    "react": ">=16 || 19.0.0-rc"
+    "react": ">=16 || >=19.0.0-rc"
   },
   "prettier": {
     "printWidth": 80,
